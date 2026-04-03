@@ -1,5 +1,5 @@
 // src/lark.ts
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 
 interface LarkExecOptions {
   timeout?: number;  // ms, default 30000
@@ -22,33 +22,62 @@ function larkJSON<T = unknown>(args: string[], opts?: LarkExecOptions): T {
 
 // --- Search ---
 
-interface SearchResult {
-  items: Array<{
-    doc_id: string;
-    title: string;
-    url: string;
-    type: string;           // DOC, WIKI, SHEET, etc.
-    owner_id?: string;
-    create_time_iso?: string;
-    edit_time_iso?: string;
-  }>;
-  has_more: boolean;
-  page_token?: string;
+interface SearchResultItem {
+  doc_id: string;
+  title: string;
+  url: string;
+  type: string;           // DOC, WIKI, SHEET, etc.
+  owner_id?: string;
+  create_time_iso?: string;
+  edit_time_iso?: string;
 }
 
-export async function searchDocs(query: string, maxPages = 5): Promise<SearchResult['items']> {
-  const allItems: SearchResult['items'] = [];
+interface RawSearchResponse {
+  ok: boolean;
+  data: {
+    has_more: boolean;
+    page_token?: string;
+    results: Array<{
+      entity_type: string;
+      result_meta: {
+        token: string;
+        url: string;
+        doc_types: string;
+        owner_name?: string;
+        create_time_iso?: string;
+        update_time_iso?: string;
+      };
+      title_highlighted: string;
+    }>;
+  };
+}
+
+function parseSearchResults(raw: RawSearchResponse): { items: SearchResultItem[]; has_more: boolean; page_token?: string } {
+  const items = (raw.data.results ?? []).map(r => ({
+    doc_id: r.result_meta.token,
+    title: r.title_highlighted.replace(/<\/?h[b]?>/g, ''),  // strip highlight tags
+    url: r.result_meta.url,
+    type: r.result_meta.doc_types ?? r.entity_type,  // DOCX, SLIDES, SHEET, etc.
+    create_time_iso: r.result_meta.create_time_iso,
+    edit_time_iso: r.result_meta.update_time_iso,
+  }));
+  return { items, has_more: raw.data.has_more, page_token: raw.data.page_token };
+}
+
+export async function searchDocs(query: string, maxPages = 5): Promise<SearchResultItem[]> {
+  const allItems: SearchResultItem[] = [];
   let pageToken: string | undefined;
 
   for (let page = 0; page < maxPages; page++) {
     const args = ['docs', '+search', '--query', JSON.stringify(query), '--page-size', '20'];
     if (pageToken) args.push('--page-token', pageToken);
 
-    const result = larkJSON<SearchResult>(args);
-    allItems.push(...(result.items ?? []));
+    const raw = larkJSON<RawSearchResponse>(args);
+    const { items, has_more, page_token } = parseSearchResults(raw);
+    allItems.push(...items);
 
-    if (!result.has_more || !result.page_token) break;
-    pageToken = result.page_token;
+    if (!has_more || !page_token) break;
+    pageToken = page_token;
   }
 
   return allItems;
@@ -66,27 +95,36 @@ interface WikiNodeResult {
   };
 }
 
+interface RawWikiResponse {
+  ok: boolean;
+  data: { node: WikiNodeResult['node'] };
+}
+
 export async function resolveWikiNode(wikiToken: string): Promise<WikiNodeResult['node']> {
-  const result = larkJSON<WikiNodeResult>(
+  const raw = larkJSON<RawWikiResponse>(
     ['wiki', 'spaces', 'get_node', '--params', JSON.stringify({ token: wikiToken })]
   );
-  return result.node;
+  return raw.data.node;
 }
 
 // --- Fetch Document Content ---
 
-interface FetchResult {
-  title: string;
-  markdown: string;
-  has_more: boolean;
+interface RawFetchResponse {
+  ok: boolean;
+  data: {
+    doc_id: string;
+    markdown: string;
+    message: string;
+    title?: string;
+  };
 }
 
 export async function fetchDocContent(docToken: string): Promise<{ title: string; markdown: string }> {
-  const result = larkJSON<FetchResult>(
+  const raw = larkJSON<RawFetchResponse>(
     ['docs', '+fetch', '--doc', docToken],
     { timeout: 60000 }
   );
-  return { title: result.title, markdown: result.markdown };
+  return { title: raw.data.title ?? '', markdown: raw.data.markdown };
 }
 
 // --- Create Document ---
@@ -97,9 +135,27 @@ interface CreateResult {
   message: string;
 }
 
+interface RawCreateResponse {
+  ok: boolean;
+  data: CreateResult;
+}
+
 export async function createDoc(title: string, markdown: string, wikiSpace?: string): Promise<CreateResult> {
-  const args = ['docs', '+create', '--title', JSON.stringify(title), '--markdown', JSON.stringify(markdown)];
+  // Use execFileSync to bypass shell — avoids all escaping issues with markdown content
+  const args = ['docs', '+create', '--title', title, '--markdown', markdown];
   if (wikiSpace) args.push('--wiki-space', wikiSpace);
 
-  return larkJSON<CreateResult>(args, { timeout: 60000 });
+  const raw = execFileSync('lark-cli', args, {
+    encoding: 'utf-8',
+    timeout: 120000,
+    maxBuffer: 10 * 1024 * 1024,
+  });
+
+  try {
+    const parsed = JSON.parse(raw) as RawCreateResponse;
+    return parsed.data;
+  } catch {
+    const urlMatch = raw.match(/https?:\/\/[^\s"]+/);
+    return { doc_id: '', doc_url: urlMatch?.[0] ?? '', message: raw.trim() };
+  }
 }

@@ -21,11 +21,20 @@ export async function collectDocuments(cache: CacheStore, opts: CollectOptions =
   const cachedNodes = await cache.readNodes();
   const cachedMap = new Map(cachedNodes.map(n => [n.id, n]));
 
-  // Step 3: Resolve and fetch each document
+  // Step 3: Deduplicate search results by doc_id
+  const seen = new Set<string>();
+  const uniqueResults = searchResults.filter(item => {
+    if (seen.has(item.doc_id)) return false;
+    seen.add(item.doc_id);
+    return true;
+  });
+  console.log(chalk.blue(`   去重后 ${uniqueResults.length} 篇`));
+
+  // Step 4: Resolve and fetch each document
   const nodes: KnowledgeNode[] = [];
   let fetchCount = 0;
 
-  for (const item of searchResults) {
+  for (const item of uniqueResults) {
     const id = item.doc_id;
     const existingNode = cachedMap.get(id);
 
@@ -42,6 +51,12 @@ export async function collectDocuments(cache: CacheStore, opts: CollectOptions =
       let markdown = '';
       let title = item.title;
       let docType: KnowledgeNode['type'] = 'doc';
+
+      // Skip unsupported types (SLIDES, SHEET, BITABLE, etc.)
+      const supportedTypes = ['DOC', 'DOCX', 'WIKI'];
+      if (!supportedTypes.includes(item.type)) {
+        continue;
+      }
 
       if (item.type === 'WIKI') {
         // Resolve wiki token first
