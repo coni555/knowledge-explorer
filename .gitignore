@@ -1,4 +1,17 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
-.knowledge-cache/
 *.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Cache
+.knowledge-cache/
+
+# OS
+.DS_Store

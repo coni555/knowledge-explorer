@@ -10,7 +10,7 @@ import type { ExploreResult } from './types.js';
 import chalk from 'chalk';
 import { join } from 'path';
 
-async function explore(query?: string) {
+async function explore(query?: string, maxPages?: number) {
   console.log(chalk.bold.cyan('\n🔍 Knowledge Explorer — 飞书知识探索器\n'));
 
   // Init AI
@@ -21,7 +21,7 @@ async function explore(query?: string) {
   const cache = new CacheStore(cacheDir);
 
   // Phase 1: Collect
-  const nodes = await collectDocuments(cache, { query });
+  const nodes = await collectDocuments(cache, { query, maxPages });
 
   if (nodes.length === 0) {
     console.log(chalk.yellow('未找到任何文档。请检查搜索关键词或 lark-cli 登录状态。'));
@@ -69,7 +69,11 @@ async function explore(query?: string) {
 const args = process.argv.slice(2);
 const query = args.find(a => !a.startsWith('-'));
 
-explore(query).catch(err => {
+// --max-pages flag
+const maxPagesIdx = args.indexOf('--max-pages');
+const maxPages = maxPagesIdx !== -1 ? parseInt(args[maxPagesIdx + 1], 10) : undefined;
+
+explore(query, maxPages).catch(err => {
   console.error(chalk.red(`\n❌ 错误: ${err.message}`));
   process.exit(1);
 });

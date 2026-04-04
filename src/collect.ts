@@ -14,7 +14,7 @@ export async function collectDocuments(cache: CacheStore, opts: CollectOptions =
   console.log(chalk.blue('📡 正在搜索飞书文档...'));
 
   // Step 1: Search
-  const searchResults = await searchDocs(query, opts.maxPages ?? 5);
+  const searchResults = await searchDocs(query, opts.maxPages ?? 10);
   console.log(chalk.blue(`   找到 ${searchResults.length} 篇文档`));
 
   // Step 2: Load existing cached nodes for freshness check

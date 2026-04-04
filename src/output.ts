@@ -48,6 +48,18 @@ export function printTerminalReport(result: ExploreResult): void {
     });
   }
 
+  // Health summary
+  const dupCount = semantic_insights.flatMap(si => si.duplicates).length;
+  const staleCount = structural_insights.filter(si => si.type === 'stale').flatMap(si => si.node_ids).length;
+  const orphanCount = structural_insights.filter(si => si.type === 'orphan').flatMap(si => si.node_ids).length;
+  if (dupCount + staleCount + orphanCount > 0) {
+    const parts: string[] = [];
+    if (dupCount > 0) parts.push(`${dupCount} 组重复文档待合并`);
+    if (staleCount > 0) parts.push(`${staleCount} 篇过期文档待更新`);
+    if (orphanCount > 0) parts.push(`${orphanCount} 篇孤岛文档待关联`);
+    console.log(chalk.bold(`📋 健康建议：${parts.join('，')}`));
+  }
+
   console.log('');
 }
 
@@ -100,6 +112,41 @@ function buildFeishuMarkdown(result: ExploreResult): string {
         if (si.duplicates.length > 0) {
           parts.push(`\n<callout emoji="📋" background-color="light-blue">\n**可能重复：** ${si.duplicates.join('；')}\n</callout>`);
         }
+      }
+      parts.push('');
+    }
+  }
+
+  // Health recommendations
+  const allDuplicates = semantic_insights.flatMap(si => si.duplicates);
+  const staleNodes = structural_insights.find(si => si.type === 'stale')?.node_ids ?? [];
+  const orphanNodes = structural_insights.find(si => si.type === 'orphan')?.node_ids ?? [];
+
+  if (allDuplicates.length > 0 || staleNodes.length > 0 || orphanNodes.length > 0) {
+    parts.push(`## 知识健康建议\n`);
+
+    if (allDuplicates.length > 0) {
+      parts.push(`### 📋 建议合并的重复文档\n`);
+      for (const dup of allDuplicates) {
+        parts.push(`- ${dup}`);
+      }
+      parts.push('');
+    }
+
+    if (staleNodes.length > 0) {
+      parts.push(`### ⏰ 建议更新的过期文档\n`);
+      for (const nid of staleNodes) {
+        const n = nodeMap.get(nid);
+        if (n) parts.push(`- [${n.title}](${n.url})`);
+      }
+      parts.push('');
+    }
+
+    if (orphanNodes.length > 0) {
+      parts.push(`### 🏝 建议关联的孤岛文档\n`);
+      for (const nid of orphanNodes) {
+        const n = nodeMap.get(nid);
+        if (n) parts.push(`- [${n.title}](${n.url})`);
       }
       parts.push('');
     }

@@ -8,6 +8,10 @@ interface AIConfig {
 
 let config: AIConfig | null = null;
 
+export function isAIConfigured(): boolean {
+  return config !== null;
+}
+
 export function configureAI(cfg: AIConfig) {
   config = cfg;
 }
@@ -114,6 +118,40 @@ export async function generateCollision(
     return JSON.parse(cleaned);
   } catch {
     return { suggestion: '', reasoning: '' };
+  }
+}
+
+// --- Semantic similarity between two documents ---
+
+export async function judgeSemantic(
+  docA: { title: string; summary: string; keywords: string[] },
+  docB: { title: string; summary: string; keywords: string[] },
+): Promise<{ score: number; reason: string }> {
+  const system = `你是知识图谱分析师。判断两篇文档的语义相关性。
+评分标准（0-1）：
+- 0.8-1.0：讨论同一主题，互为补充
+- 0.5-0.7：有交叉领域，部分相关
+- 0.3-0.4：弱关联，仅表面相似
+- 0.0-0.2：无关
+
+严格以JSON格式返回：{"score": 0.7, "reason": "一句话说明关联原因"}`;
+
+  const user = `文档A：《${docA.title}》
+摘要：${docA.summary}
+关键词：${docA.keywords.join(', ')}
+
+文档B：《${docB.title}》
+摘要：${docB.summary}
+关键词：${docB.keywords.join(', ')}`;
+
+  const raw = await chatComplete(system, user);
+
+  try {
+    const cleaned = raw.replace(/```json\n?|\n?```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    return { score: Math.max(0, Math.min(1, parsed.score ?? 0)), reason: parsed.reason ?? '' };
+  } catch {
+    return { score: 0, reason: '' };
   }
 }
 

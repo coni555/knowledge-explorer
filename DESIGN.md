@@ -272,12 +272,17 @@ knowledge-explorer/
 - docs +create 不支持 --format json，不能走 larkJSON
 - markdown 内容含特殊字符需用 execFileSync 绕过 shell
 
-### 待做（明天继续）
+### 已完成（2026-04-04）
 
-- [ ] link edges 实测验证（需要有互相引用的文档来测试）
-- [ ] semantic edges（AI 判断语义相似的文档对，当前未实现）
-- [ ] L2 聚类分析在飞书文档中的展示（当前只有碰撞洞察）
-- [ ] 搜索分页优化（当前限制 5 页 100 条，去重后可能只有 20 条 DOCX）
+- [x] semantic edges — `ai.ts` 新增 `judgeSemantic()`，`graph.ts` 新增 `findSemanticEdges()` 并接入 buildGraph 管线。关键词预筛选 + AI 精判，最多 15 对，阈值 0.5
+- [x] 搜索分页优化 — 默认 5→10 页，新增 `--max-pages` CLI 参数
+- [x] L2 聚类展示完善 — 飞书文档新增「知识健康建议」章节（重复/过期/孤岛），终端新增健康摘要行
+- [x] API key 安全 — `.gitignore` 加 `.env`，新建 `.env.example` 模板
+
+### 待做
+
+- [ ] link edges 实测验证（代码+单测已通过，需真实互相引用的文档验证）
+- [ ] 集成测试（含 semantic edges 全流程验证）
 - [ ] README 中的 GIF 录制
 - [ ] 报名参赛
-- [ ] 轮换通义千问 API key（已暴露在对话历史中）
+- [ ] 轮换通义千问 API key（旧 key 已暴露在对话历史中）

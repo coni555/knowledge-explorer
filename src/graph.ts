@@ -1,6 +1,6 @@
 // src/graph.ts
 import type { KnowledgeNode, Edge, Cluster } from './types.js';
-import { summarizeDoc } from './ai.js';
+import { summarizeDoc, judgeSemantic, isAIConfigured } from './ai.js';
 import chalk from 'chalk';
 
 // --- Link Edges: parse feishu URLs from content ---
@@ -74,6 +74,68 @@ export async function generateSummaries(nodes: KnowledgeNode[]): Promise<void> {
   console.log(chalk.green(`\n   ✓ 摘要生成完成`));
 }
 
+// --- Semantic Edges: AI-judged conceptual similarity ---
+
+export async function findSemanticEdges(nodes: KnowledgeNode[], existingEdges: Edge[]): Promise<Edge[]> {
+  if (!isAIConfigured()) {
+    console.log(chalk.yellow('   ⏭ 跳过语义分析（未配置 AI API key）'));
+    return [];
+  }
+  // Only consider nodes with summaries and keywords
+  const candidates = nodes.filter(n => n.summary && n.keywords?.length > 0);
+  if (candidates.length < 2) return [];
+
+  // Pre-filter: only send pairs with ≥1 shared keyword to AI (saves API calls)
+  const existingPairs = new Set(existingEdges.map(e => `${e.source}->${e.target}`));
+  const pairs: Array<[KnowledgeNode, KnowledgeNode, number]> = [];
+
+  for (let i = 0; i < candidates.length; i++) {
+    for (let j = i + 1; j < candidates.length; j++) {
+      const a = candidates[i], b = candidates[j];
+      // Skip if already connected by link/mention
+      if (existingPairs.has(`${a.id}->${b.id}`) || existingPairs.has(`${b.id}->${a.id}`)) continue;
+
+      const shared = a.keywords.filter(k => b.keywords.includes(k)).length;
+      if (shared > 0) pairs.push([a, b, shared]);
+    }
+  }
+
+  // Sort by keyword overlap descending, cap at 15 pairs to control API cost
+  pairs.sort((a, b) => b[2] - a[2]);
+  const topPairs = pairs.slice(0, 15);
+
+  if (topPairs.length === 0) return [];
+
+  console.log(chalk.blue(`🧠 正在判断 ${topPairs.length} 对文档的语义相似度...`));
+  const edges: Edge[] = [];
+  let done = 0;
+
+  for (const [a, b] of topPairs) {
+    try {
+      const result = await judgeSemantic(
+        { title: a.title, summary: a.summary, keywords: a.keywords },
+        { title: b.title, summary: b.summary, keywords: b.keywords },
+      );
+      if (result.score >= 0.5) {
+        edges.push({
+          source: a.id,
+          target: b.id,
+          type: 'semantic',
+          weight: result.score,
+          reason: result.reason,
+        });
+      }
+      done++;
+      process.stdout.write(chalk.gray(`\r   已判断 ${done}/${topPairs.length}`));
+    } catch (err) {
+      console.warn(chalk.yellow(`\n   ⚠ 语义判断失败: ${a.title} × ${b.title}`));
+    }
+  }
+  console.log(chalk.green(`\n   ✓ 发现 ${edges.length} 条语义关系`));
+
+  return edges;
+}
+
 // --- Clustering: connected components via union-find ---
 
 export function clusterNodes(nodes: KnowledgeNode[], edges: Edge[]): Cluster[] {
@@ -135,8 +197,10 @@ export async function buildGraph(nodes: KnowledgeNode[]): Promise<{ edges: Edge[
   // Step 3: AI summaries
   await generateSummaries(nodes);
 
-  // Step 4: All edges combined (semantic edges skipped for MVP speed)
-  const allEdges = [...linkEdges, ...mentionEdges];
+  // Step 4: Semantic edges (AI-judged similarity)
+  const semanticEdges = await findSemanticEdges(nodes, [...linkEdges, ...mentionEdges]);
+
+  const allEdges = [...linkEdges, ...mentionEdges, ...semanticEdges];
 
   // Step 5: Clustering
   const clusters = clusterNodes(nodes, allEdges);

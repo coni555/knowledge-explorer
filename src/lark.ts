@@ -64,7 +64,7 @@ function parseSearchResults(raw: RawSearchResponse): { items: SearchResultItem[]
   return { items, has_more: raw.data.has_more, page_token: raw.data.page_token };
 }
 
-export async function searchDocs(query: string, maxPages = 5): Promise<SearchResultItem[]> {
+export async function searchDocs(query: string, maxPages = 10): Promise<SearchResultItem[]> {
   const allItems: SearchResultItem[] = [];
   let pageToken: string | undefined;
 
