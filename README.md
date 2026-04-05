@@ -1,5 +1,7 @@
 <div align="center">
 
+[English](README.md) | [中文](README.zh.md)
+
 # Knowledge Explorer
 
 ### 飞书知识探索器
@@ -10,8 +12,6 @@
 
 Scan your Feishu knowledge base, discover hidden relationships between documents,<br>
 and generate actionable insights — all from a single command.
-
-扫描飞书知识库，自动发现文档间的隐藏关系，生成可行动的碰撞洞察。
 
 [Quick Start](#-quick-start) · [Features](#-what-it-discovers) · [Two Modes](#-two-analysis-modes) · [How It Works](#-how-it-works) · [As a Skill](#-use-as-ai-agent-skill) · [Contributing](#-contributing)
 
