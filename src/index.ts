@@ -1,5 +1,14 @@
 #!/usr/bin/env node
 // src/index.ts
+import { existsSync } from 'fs';
+import { join } from 'path';
+
+// Auto-load .env if present (Node 20.6+ built-in)
+const envPath = join(process.cwd(), '.env');
+if (existsSync(envPath)) {
+  process.loadEnvFile(envPath);
+}
+
 import { CacheStore } from './cache.js';
 import { collectDocuments, type CollectOptions } from './collect.js';
 import { buildGraph } from './graph.js';
@@ -9,7 +18,6 @@ import { initAIFromEnv } from './ai.js';
 import { listSpaces } from './lark.js';
 import type { ExploreResult } from './types.js';
 import chalk from 'chalk';
-import { join } from 'path';
 
 // --- Phase runners ---
 

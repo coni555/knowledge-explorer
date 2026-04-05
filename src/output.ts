@@ -32,8 +32,16 @@ export function printTerminalReport(result: ExploreResult): void {
   if (namedClusters.length > 0) {
     console.log('');
     console.log(chalk.bold(`🔗 发现 ${namedClusters.length} 个主题聚类`));
-    for (const c of namedClusters) {
-      console.log(chalk.gray(`  ├ #${c.label} (${c.node_ids.length}篇)`));
+    for (let ci = 0; ci < namedClusters.length; ci++) {
+      const c = namedClusters[ci];
+      const isLast = ci === namedClusters.length - 1;
+      const prefix = isLast ? '└' : '├';
+      console.log(chalk.bold(`  ${prefix} #${c.label} (${c.node_ids.length}篇)`));
+      const titles = c.node_ids.map(id => nodeMap.get(id)?.title).filter(Boolean);
+      const docPrefix = isLast ? ' ' : '│';
+      for (const t of titles) {
+        console.log(chalk.gray(`  ${docPrefix}   · ${t}`));
+      }
     }
   }
 
@@ -44,7 +52,11 @@ export function printTerminalReport(result: ExploreResult): void {
     collision_insights.forEach((ci, i) => {
       const a = nodeMap.get(ci.node_a_id)?.title ?? ci.node_a_id;
       const b = nodeMap.get(ci.node_b_id)?.title ?? ci.node_b_id;
-      console.log(chalk.yellow(`  ${i + 1}.《${a}》×《${b}》→ ${ci.suggestion}`));
+      console.log(chalk.yellow(`  ${i + 1}.《${a}》×《${b}》`));
+      console.log(chalk.white(`     → ${ci.suggestion}`));
+      if (ci.reasoning) {
+        console.log(chalk.gray(`     ${ci.reasoning}`));
+      }
     });
   }
 
@@ -72,14 +84,14 @@ function buildFeishuMarkdown(result: ExploreResult): string {
 
   // Overview
   parts.push(`## 概览\n`);
-  parts.push(`- 扫描时间：${result.scanned_at}`);
-  parts.push(`- 文档数量：${nodes.length} 篇`);
-  parts.push(`- 关系数量：${result.edges.length} 条`);
-  parts.push(`- 主题聚类：${clusters.length} 个`);
-  parts.push('');
+  parts.push(`<callout emoji="📊" background-color="light-blue">`);
+  parts.push(`**扫描时间：** ${result.scanned_at.split('T')[0]}`);
+  parts.push(`**文档数量：** ${nodes.length} 篇 · **关系数量：** ${result.edges.length} 条 · **主题聚类：** ${clusters.length} 个`);
+  parts.push(`</callout>\n`);
 
   // Structural insights
   if (structural_insights.length > 0) {
+    parts.push(`---\n`);
     parts.push(`## 知识图谱摘要\n`);
     for (const insight of structural_insights) {
       const label = { hub: '🏛 枢纽文档', orphan: '🏝 孤岛文档', bridge: '🌉 桥梁文档', stale: '⏰ 可能过期' }[insight.type];
@@ -95,6 +107,7 @@ function buildFeishuMarkdown(result: ExploreResult): string {
   // Cluster analysis
   const namedClusters = clusters.filter(c => c.label && c.node_ids.length >= 2);
   if (namedClusters.length > 0) {
+    parts.push(`---\n`);
     parts.push(`## 主题聚类\n`);
     for (const c of namedClusters) {
       parts.push(`### #${c.label} (${c.node_ids.length}篇)\n`);
@@ -123,6 +136,7 @@ function buildFeishuMarkdown(result: ExploreResult): string {
   const orphanNodes = structural_insights.find(si => si.type === 'orphan')?.node_ids ?? [];
 
   if (allDuplicates.length > 0 || staleNodes.length > 0 || orphanNodes.length > 0) {
+    parts.push(`---\n`);
     parts.push(`## 知识健康建议\n`);
 
     if (allDuplicates.length > 0) {
@@ -154,6 +168,7 @@ function buildFeishuMarkdown(result: ExploreResult): string {
 
   // Collision insights
   if (collision_insights.length > 0) {
+    parts.push(`---\n`);
     parts.push(`## 碰撞洞察\n`);
     for (const ci of collision_insights) {
       const a = nodeMap.get(ci.node_a_id);
@@ -162,7 +177,9 @@ function buildFeishuMarkdown(result: ExploreResult): string {
       const bTitle = b ? `[${b.title}](${b.url})` : ci.node_b_id;
       parts.push(`### ${aTitle} × ${bTitle}\n`);
       parts.push(`<callout emoji="💡" background-color="light-green">\n**建议：** ${ci.suggestion}\n</callout>\n`);
-      parts.push(`${ci.reasoning}\n`);
+      if (ci.reasoning) {
+        parts.push(`<callout emoji="🔍" background-color="light-grey">\n**分析：** ${ci.reasoning}\n</callout>\n`);
+      }
     }
   }
 
