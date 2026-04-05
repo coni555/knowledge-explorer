@@ -1,11 +1,22 @@
 {
   "name": "knowledge-explorer",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Scan Feishu knowledge bases, discover hidden relationships, generate actionable insights.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
     "knowledge-explorer": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "SKILL.md",
+    "references",
+    "README.md",
+    "README.zh.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/coni555/knowledge-explorer.git"
   },
   "scripts": {
     "build": "tsc",

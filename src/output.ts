@@ -183,6 +183,53 @@ function buildFeishuMarkdown(result: ExploreResult): string {
     }
   }
 
+  // Action checklist
+  const actions: string[] = [];
+
+  // Stale docs action
+  const staleDocs = structural_insights.find(si => si.type === 'stale');
+  if (staleDocs && staleDocs.node_ids.length > 0) {
+    for (const nid of staleDocs.node_ids.slice(0, 3)) {
+      const n = nodeMap.get(nid);
+      if (n) {
+        const days = Math.floor((Date.now() - new Date(n.updated_at).getTime()) / (24 * 60 * 60 * 1000));
+        actions.push(`更新 [${n.title}](${n.url})（已 ${days} 天未更新）`);
+      }
+    }
+  }
+
+  // Collision actions
+  for (const ci of collision_insights.slice(0, 2)) {
+    const a = nodeMap.get(ci.node_a_id);
+    const b = nodeMap.get(ci.node_b_id);
+    if (a && b) {
+      actions.push(`探索碰撞洞察：「${a.title}」×「${b.title}」— ${ci.suggestion.slice(0, 40)}...`);
+    }
+  }
+
+  // Orphan docs action
+  const orphanInsight = structural_insights.find(si => si.type === 'orphan');
+  if (orphanInsight && orphanInsight.node_ids.length > 0) {
+    actions.push(`整理 ${orphanInsight.node_ids.length} 篇孤岛文档（归入知识空间或归档）`);
+  }
+
+  // Duplicate action
+  if (allDuplicates.length > 0) {
+    actions.push(`合并 ${allDuplicates.length} 组疑似重复文档`);
+  }
+
+  // Next scan suggestion
+  actions.push(`下次扫描建议：2 周后（知识库有足够变化时）`);
+
+  if (actions.length > 0) {
+    parts.push(`---\n`);
+    parts.push(`## 📌 建议行动\n`);
+    for (const action of actions) {
+      parts.push(`- [ ] ${action}`);
+    }
+    parts.push('');
+  }
+
   return parts.join('\n');
 }
 

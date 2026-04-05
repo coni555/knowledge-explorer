@@ -14,7 +14,7 @@ import { collectDocuments, type CollectOptions } from './collect.js';
 import { buildGraph } from './graph.js';
 import { computeStructuralInsights, computeSemanticInsights, computeCollisionInsights } from './insights.js';
 import { printTerminalReport, publishToFeishu } from './output.js';
-import { initAIFromEnv } from './ai.js';
+import { initAIFromEnv, isAIConfigured } from './ai.js';
 import { listSpaces } from './lark.js';
 import type { ExploreResult } from './types.js';
 import chalk from 'chalk';
@@ -56,6 +56,33 @@ async function runCollect(cache: CacheStore, opts: {
   });
 
   console.log(chalk.green(`\n✓ 收集完成，${nodes.length} 篇文档已缓存（含内容）`));
+
+  // Show document preview + next step guidance
+  console.log('');
+  console.log(chalk.bold('📋 文档预览：'));
+  const preview = nodes.slice(0, 5);
+  for (const n of preview) {
+    const chars = n.content?.length ?? 0;
+    console.log(chalk.gray(`  · ${n.title} (${chars > 0 ? chars + '字' : '无内容'})`));
+  }
+  if (nodes.length > 5) {
+    console.log(chalk.gray(`  ... 还有 ${nodes.length - 5} 篇`));
+  }
+
+  const cachePath = join(process.cwd(), '.knowledge-cache');
+  console.log('');
+  console.log(chalk.bold('💡 下一步：'));
+  console.log(chalk.cyan('  方式 A — 把以下提示词发给你的 AI 助手（Claude / Codex / ChatGPT）：'));
+  console.log(chalk.white(`  "请读取 ${cachePath}/nodes.json，按主题对这些文档进行语义聚类，`));
+  console.log(chalk.white(`   找出碰撞洞察，然后将结果写入 ${cachePath}/ 下的缓存文件。`));
+  console.log(chalk.white(`   完成后运行 npx knowledge-explorer --render-only 生成报告"`));
+  console.log('');
+  console.log(chalk.cyan('  方式 B — 配置 API key 后全自动分析：'));
+  console.log(chalk.white(`  echo "OPENAI_API_KEY=sk-xxx" > .env`));
+  console.log(chalk.white(`  npx knowledge-explorer --analyze-only`));
+  console.log('');
+  console.log(chalk.gray(`  或运行 npx knowledge-explorer --analyze-prompt 获取完整分析提示词`));
+
   return collectResult;
 }
 
@@ -146,7 +173,7 @@ async function exploreFull(cache: CacheStore, opts: {
   owner?: string;
 }) {
 
-  // Init AI
+  // Init AI — if no key, gracefully degrade to collect-only + guidance
   initAIFromEnv();
 
   // Phase 1: Collect
@@ -163,6 +190,34 @@ async function exploreFull(cache: CacheStore, opts: {
   if (nodes.length === 0) {
     console.log(chalk.yellow('未找到任何文档。请检查搜索关键词或 lark-cli 登录状态。'));
     process.exit(0);
+  }
+
+  // No API key → degrade to collect + guidance
+  if (!isAIConfigured()) {
+    // Save nodes with content
+    await cache.writeNodes(nodes);
+    await cache.writeMeta({
+      version: '0.2.0',
+      scanned_at: new Date().toISOString(),
+      mode: opts.mode,
+      query: opts.query,
+      space_id: collectResult.spaceId,
+      space_name: collectResult.spaceName,
+      node_count: nodes.length,
+    });
+
+    console.log(chalk.green(`\n✓ 收集完成，${nodes.length} 篇文档已缓存（含内容）`));
+    console.log('');
+    console.log(chalk.yellow('⚠ 未检测到 AI API key，已自动切换为收集模式'));
+    console.log('');
+    console.log(chalk.bold('💡 下一步：'));
+    console.log(chalk.cyan('  方式 A — 运行以下命令获取完整分析提示词，粘贴给你的 AI 助手：'));
+    console.log(chalk.white('  npx knowledge-explorer --analyze-prompt'));
+    console.log('');
+    console.log(chalk.cyan('  方式 B — 配置 API key 后重新运行：'));
+    console.log(chalk.white('  echo "OPENAI_API_KEY=sk-xxx" > .env'));
+    console.log(chalk.white('  npx knowledge-explorer'));
+    return;
   }
 
   // Phase 2: Build Graph
@@ -214,8 +269,70 @@ async function exploreFull(cache: CacheStore, opts: {
 
 const args = process.argv.slice(2);
 
+// --analyze-prompt: generate a copy-paste prompt for AI analysis
+if (args.includes('--analyze-prompt')) {
+  (async () => {
+    const cacheDir = join(process.cwd(), '.knowledge-cache');
+    const cache = new CacheStore(cacheDir);
+    const nodes = await cache.readNodes();
+
+    if (nodes.length === 0) {
+      console.log(chalk.yellow('缓存中无文档，请先运行 --collect-only'));
+      process.exit(1);
+    }
+
+    // Build compact document list (title + summary/keywords if available, truncated content)
+    const docList = nodes.map((n, i) => {
+      const parts = [`${i + 1}. 「${n.title}」`];
+      if (n.summary) parts.push(`   摘要：${n.summary}`);
+      if (n.keywords?.length) parts.push(`   关键词：${n.keywords.join('、')}`);
+      if (n.content) {
+        const preview = n.content.slice(0, 300).replace(/\n/g, ' ');
+        parts.push(`   内容摘录：${preview}${n.content.length > 300 ? '...' : ''}`);
+      }
+      return parts.join('\n');
+    }).join('\n\n');
+
+    const prompt = `你是一个知识图谱分析专家。我有 ${nodes.length} 篇飞书文档，请帮我分析它们之间的关系。
+
+## 文档列表
+
+${docList}
+
+## 你的任务
+
+请依次完成以下分析，每步完成后告诉我进度：
+
+### 1. 语义聚类
+将这些文档按主题分为 ${Math.ceil(nodes.length / 4)} ~ ${Math.ceil(nodes.length / 2)} 组，每组不超过 5 篇。给每组一个 2-6 字的主题标签。
+
+### 2. 碰撞洞察
+从不同聚类中挑 3-5 对文档，发现它们的潜在交叉点，生成**具体可执行的行动建议**（不要泛泛而谈）。
+
+### 3. 知识健康度
+识别：
+- 枢纽文档（被多篇关联的核心文档）
+- 孤岛文档（与其他文档无关联）
+- 过期文档（长期未更新但仍被引用）
+
+### 4. 输出结果
+将分析结果写入 ${cacheDir}/ 目录下的 JSON 文件：
+- summaries.json — 每篇文档的摘要和关键词
+- clusters.json — 聚类结果：[{"id":"cluster_0","label":"主题标签","node_ids":["doc_id"],"summary":"描述"}]
+- edges.json — 关系边：[{"source":"id1","target":"id2","type":"semantic","weight":0.8,"reason":"原因"}]
+- structural_insights.json — [{"type":"hub|orphan|stale","node_ids":["id"],"description":"描述"}]
+- semantic_insights.json — [{"cluster_id":"cluster_0","themes":[],"contradictions":[],"duplicates":[],"summary":""}]
+- collision_insights.json — [{"node_a_id":"id1","node_b_id":"id2","suggestion":"建议","reasoning":"原因"}]
+
+写完后运行：npx knowledge-explorer --render-only`;
+
+    console.log(prompt);
+  })().catch(err => {
+    console.error(chalk.red(`\n❌ 错误: ${err.message}`));
+    process.exit(1);
+  });
 // --list-spaces: utility mode
-if (args.includes('--list-spaces')) {
+} else if (args.includes('--list-spaces')) {
   (async () => {
     const spaces = await listSpaces();
     if (spaces.length === 0) {
