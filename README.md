@@ -56,7 +56,7 @@ Knowledge Explorer fixes this by using AI to **build connections from scratch** 
 ### Install
 
 ```bash
-git clone https://github.com/coni555/knowledge-explorer.git
+git clone https://github.com/coni555/lark-knowledge-explorer.git
 cd knowledge-explorer
 npm install && npm run build
 ```
@@ -213,14 +213,14 @@ The skill supports both analysis modes — Claude can either run the full pipeli
 
 Contributions welcome! If you find a bug or have feature ideas:
 
-1. [Open an Issue](https://github.com/coni555/knowledge-explorer/issues)
+1. [Open an Issue](https://github.com/coni555/lark-knowledge-explorer/issues)
 2. Fork → branch → PR
 
 For major changes, please open an issue first to discuss.
 
 ## 📈 Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=coni555/knowledge-explorer&type=Date)](https://star-history.com/#coni555/knowledge-explorer&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=coni555/lark-knowledge-explorer&type=Date)](https://star-history.com/#coni555/lark-knowledge-explorer&Date)
 
 ## License
 

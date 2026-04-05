@@ -3,7 +3,7 @@
 > 飞书 CLI 创作者大赛参赛项目
 > 状态：v0.2 语义优先架构完成，全量扫描+Owner过滤，集成测试通过
 > 最后更新：2026-04-05
-> GitHub：https://github.com/coni555/knowledge-explorer
+> GitHub：https://github.com/coni555/lark-knowledge-explorer
 
 ## 产品定义
 
