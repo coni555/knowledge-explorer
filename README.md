@@ -69,9 +69,9 @@ npm install && npm run build
 ### Run
 
 ```bash
-# Option A: Let Claude analyze (zero API config)
+# Option A: Let your AI agent analyze (zero API config)
 npx knowledge-explorer --collect-only
-# → Then ask Claude to read .knowledge-cache/ and analyze
+# → Then ask your AI agent to read .knowledge-cache/ and analyze
 
 # Option B: Fully automated with AI API
 echo "OPENAI_API_KEY=sk-xxx" > .env
@@ -83,18 +83,18 @@ That's it. Terminal report + Feishu doc auto-generated.
 
 ## 🔀 Two Analysis Modes
 
-| | Claude-Direct (Path A) | API Pipeline (Path B) |
+| | Coding Agent (Path A) | API Pipeline (Path B) |
 |---|---|---|
 | **Setup** | Zero config | Needs `OPENAI_API_KEY` |
-| **How** | `--collect-only` → Claude analyzes cache → `--render-only` | Single command, fully automated |
-| **Best for** | Claude Code / Codex users | Batch runs, CI/CD |
-| **Cost** | Your Claude subscription | API token costs |
+| **How** | `--collect-only` → AI agent analyzes cache → `--render-only` | Single command, fully automated |
+| **Best for** | AI agent users (Claude Code, Codex, etc.) | Batch runs, CI/CD |
+| **Cost** | Your AI agent subscription | API token costs |
 
-### Path A: Claude-Direct
+### Path A: Coding Agent
 
 ```bash
 npx knowledge-explorer --collect-only          # Step 1: Collect docs
-# Claude reads .knowledge-cache/nodes.json     # Step 2: AI analysis
+# AI agent reads .knowledge-cache/nodes.json   # Step 2: AI analysis
 npx knowledge-explorer --render-only           # Step 3: Render report
 ```
 
@@ -202,17 +202,14 @@ npx knowledge-explorer --owner me              # Only my docs
 
 ## 🤖 Use as AI Agent Skill
 
-Knowledge Explorer ships with a `SKILL.md` for [Claude Code](https://claude.ai/claude-code) and Codex. Install it to let your AI agent explore Feishu knowledge bases conversationally:
+Knowledge Explorer ships with a `SKILL.md` that works with any coding AI agent (Claude Code, Codex, etc.). Install it to let your AI agent explore Feishu knowledge bases conversationally:
 
 ```bash
-# Claude Code
+# Example: Claude Code
 cp -r knowledge-explorer ~/.claude/skills/knowledge-explorer
-
-# Codex
-cp -r knowledge-explorer ~/.codex/skills/knowledge-explorer
 ```
 
-The skill supports both analysis modes — Claude can either run the full pipeline or do the analysis itself using cached documents.
+The skill supports both analysis modes — your AI agent can either run the full API pipeline or do the analysis itself using cached documents.
 
 ## 🤝 Contributing
 
@@ -236,5 +233,7 @@ For major changes, please open an issue first to discuss.
 <div align="center">
 
 **Built for the [lark-cli Creator Contest](https://waytoagi.feishu.cn/wiki/R4S3w8wTTie04nkYiL6c8rxon4d)** · If this is useful, please star ⭐
+
+Thanks to [lark-cli](https://github.com/larksuite/cli) for making Feishu API accessible from the terminal.
 
 </div>
