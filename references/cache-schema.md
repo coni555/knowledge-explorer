@@ -1,6 +1,6 @@
 # Cache File Schema
 
-All files in `.knowledge-cache/` directory. Claude writes these during Path A Step 2 analysis.
+All files in `.knowledge-cache/` directory. The AI agent writes these during Path A Step 2 analysis.
 
 ## summaries.json
 
