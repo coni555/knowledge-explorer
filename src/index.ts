@@ -10,7 +10,7 @@ if (existsSync(envPath)) {
 }
 
 import { CacheStore } from './cache.js';
-import { collectDocuments, type CollectOptions } from './collect.js';
+import { collectDocuments } from './collect.js';
 import { buildGraph } from './graph.js';
 import { computeStructuralInsights, computeSemanticInsights, computeCollisionInsights } from './insights.js';
 import { printTerminalReport, publishToFeishu } from './output.js';
@@ -172,41 +172,14 @@ async function exploreFull(cache: CacheStore, opts: {
   maxPages?: number;
   owner?: string;
 }) {
-
   // Init AI — if no key, gracefully degrade to collect-only + guidance
   initAIFromEnv();
 
-  // Phase 1: Collect
-  const collectResult = await collectDocuments(cache, {
-    mode: opts.mode,
-    query: opts.query,
-    spaceId: opts.spaceId,
-    maxPages: opts.maxPages,
-    owner: opts.owner,
-  });
+  // Phase 1: Collect (reuse runCollect)
+  await runCollect(cache, opts);
 
-  const { nodes } = collectResult;
-
-  if (nodes.length === 0) {
-    console.log(chalk.yellow('未找到任何文档。请检查搜索关键词或 lark-cli 登录状态。'));
-    process.exit(0);
-  }
-
-  // No API key → degrade to collect + guidance
+  // No API key → already printed guidance in runCollect style, show degradation note
   if (!isAIConfigured()) {
-    // Save nodes with content
-    await cache.writeNodes(nodes);
-    await cache.writeMeta({
-      version: '0.2.0',
-      scanned_at: new Date().toISOString(),
-      mode: opts.mode,
-      query: opts.query,
-      space_id: collectResult.spaceId,
-      space_name: collectResult.spaceName,
-      node_count: nodes.length,
-    });
-
-    console.log(chalk.green(`\n✓ 收集完成，${nodes.length} 篇文档已缓存（含内容）`));
     console.log('');
     console.log(chalk.yellow('⚠ 未检测到 AI API key，已自动切换为收集模式'));
     console.log('');
@@ -220,47 +193,11 @@ async function exploreFull(cache: CacheStore, opts: {
     return;
   }
 
-  // Phase 2: Build Graph
-  const { edges, clusters } = await buildGraph(nodes, cache);
-  await cache.writeEdges(edges);
-  await cache.writeClusters(clusters);
+  // Phase 2+3: Analyze (reuse runAnalyze)
+  await runAnalyze(cache);
 
-  // Phase 3: Insights
-  const structural = computeStructuralInsights(nodes, edges, clusters);
-  const semantic = await computeSemanticInsights(nodes, clusters);
-  const collisions = await computeCollisionInsights(nodes, edges, clusters);
-
-  // Persist insights
-  await cache.writeStructuralInsights(structural);
-  await cache.writeSemanticInsights(semantic);
-  await cache.writeCollisionInsights(collisions);
-
-  // Save nodes (strip content)
-  await cache.writeNodes(nodes.map(n => ({ ...n, content: undefined })));
-  await cache.writeMeta({
-    version: '0.2.0',
-    scanned_at: new Date().toISOString(),
-    mode: opts.mode,
-    query: opts.query,
-    space_id: collectResult.spaceId,
-    space_name: collectResult.spaceName,
-    node_count: nodes.length,
-  });
-
-  // Build result
-  const result: ExploreResult = {
-    nodes,
-    edges,
-    clusters,
-    structural_insights: structural,
-    semantic_insights: semantic,
-    collision_insights: collisions,
-    scanned_at: new Date().toISOString(),
-  };
-
-  // Phase 4: Output
-  printTerminalReport(result);
-  await publishToFeishu(result);
+  // Phase 4: Render (reuse runRender)
+  await runRender(cache);
 
   console.log(chalk.bold.cyan('\n✨ 探索完成\n'));
 }

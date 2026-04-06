@@ -6,6 +6,7 @@
 
 ### 飞书知识探索器
 
+[![npm version](https://img.shields.io/npm/v/lark-knowledge-explorer.svg)](https://www.npmjs.com/package/lark-knowledge-explorer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org/)
 [![lark-cli](https://img.shields.io/badge/lark--cli-required-blue.svg)](https://github.com/larksuite/cli)
@@ -56,6 +57,10 @@ Knowledge Explorer 用 AI **从零建立连接** — 而不只是发现已有链
 ### 安装
 
 ```bash
+# 通过 npm 安装（推荐）
+npm install -g lark-knowledge-explorer
+
+# 或从源码构建
 git clone https://github.com/coni555/lark-knowledge-explorer.git
 cd knowledge-explorer
 npm install && npm run build

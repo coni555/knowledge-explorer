@@ -31,23 +31,31 @@ export async function generateSummaries(nodes: KnowledgeNode[], cache?: CacheSto
 
   console.log(chalk.blue(`🤖 正在生成 ${needSummary.length} 篇文档的 AI 摘要...`));
   let done = 0;
+  const CONCURRENCY = 4;
 
-  for (const node of needSummary) {
-    try {
-      const result = await summarizeDoc(node.title, node.content!);
-      node.summary = result.summary;
-      node.keywords = result.keywords;
-      // Update summary cache
-      summaryCache.set(node.id, {
-        summary: result.summary,
-        keywords: result.keywords,
-        updated_at: node.updated_at,
-      });
-      done++;
-      process.stdout.write(chalk.gray(`\r   已完成 ${done}/${needSummary.length}`));
-    } catch (err) {
-      console.warn(chalk.yellow(`\n   ⚠ 摘要生成失败: ${node.title}`));
+  // Process in concurrent batches
+  for (let i = 0; i < needSummary.length; i += CONCURRENCY) {
+    const batch = needSummary.slice(i, i + CONCURRENCY);
+    const results = await Promise.allSettled(
+      batch.map(async (node) => {
+        const result = await summarizeDoc(node.title, node.content!);
+        node.summary = result.summary;
+        node.keywords = result.keywords;
+        summaryCache.set(node.id, {
+          summary: result.summary,
+          keywords: result.keywords,
+          updated_at: node.updated_at,
+        });
+      })
+    );
+    for (let j = 0; j < results.length; j++) {
+      if (results[j].status === 'fulfilled') {
+        done++;
+      } else {
+        console.warn(chalk.yellow(`\n   ⚠ 摘要生成失败: ${batch[j].title}`));
+      }
     }
+    process.stdout.write(chalk.gray(`\r   已完成 ${done}/${needSummary.length}`));
   }
 
   // Persist summary cache
@@ -109,6 +117,7 @@ async function buildSemanticClusters(nodes: KnowledgeNode[]): Promise<{ clusters
       }
     } else {
       // Large cluster: connect each doc to 3 nearest by keyword overlap
+      const edgeKeys = new Set(edges.map(e => `${e.source}:${e.target}`));
       const clusterNodes = validIds.map(id => docsWithSummary.find(n => n.id === id)!);
       for (const node of clusterNodes) {
         const others = clusterNodes
@@ -121,12 +130,10 @@ async function buildSemanticClusters(nodes: KnowledgeNode[]): Promise<{ clusters
           .slice(0, 3);
 
         for (const o of others) {
-          // Avoid duplicate edges
-          const exists = edges.some(e =>
-            (e.source === node.id && e.target === o.id) ||
-            (e.source === o.id && e.target === node.id)
-          );
-          if (!exists) {
+          const keyAB = `${node.id}:${o.id}`;
+          const keyBA = `${o.id}:${node.id}`;
+          if (!edgeKeys.has(keyAB) && !edgeKeys.has(keyBA)) {
+            edgeKeys.add(keyAB);
             edges.push({
               source: node.id,
               target: o.id,
