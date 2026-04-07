@@ -98,7 +98,7 @@ Each analysis produces a **Feishu document report** containing:
 
 ### As an AI Agent Skill (Recommended)
 
-Works with Claude Code, Codex, and other coding agents. Chat-driven analysis, **zero API config**.
+Works with Claude Code, Codex, openclaw,and other coding agents. Chat-driven analysis, **zero API config**.
 
 Send this to your AI agent and it will handle the entire setup:
 
