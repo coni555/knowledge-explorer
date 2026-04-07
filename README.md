@@ -26,7 +26,7 @@ This tool uses AI to build relationships from scratch and find cross-topic insig
 
 Your Feishu knowledge base grows every day, but the connections between documents live only in your head.
 
-- **No graph view** — Feishu has no Obsidian-like knowledge graph
+- **No graph view** — Feishu has document relationships, but it still lacks deep semantic discovery and actionable knowledge insights at scale.
 - **Hidden duplicates** — teams write similar content in different spaces without knowing
 - **Missed connections** — two unrelated docs might spark a brilliant idea when combined
 - **Knowledge decay** — important docs go stale while still being heavily referenced
