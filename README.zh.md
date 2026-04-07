@@ -98,7 +98,7 @@ Knowledge Explorer 用 AI **从零建立连接** — 不只是发现已有链接
 
 ### 作为 AI Agent Skill（推荐）
 
-适用于 Claude Code、Codex 等 Coding Agent 用户。安装后用对话即可触发分析，**零 API 配置**。
+适用于 Claude Code、Codex、openclaw（小龙虾）等 Coding Agent 用户。安装后用对话即可触发分析，**零 API 配置**。
 
 把下面这段话发给你的 AI Agent，它会自动完成全部安装：
 
