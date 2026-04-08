@@ -1,12 +1,14 @@
 // src/lark.ts
 import { execFileSync } from 'child_process';
 
+const LARK_CLI = process.platform === 'win32' ? 'lark-cli.cmd' : 'lark-cli';
+
 interface LarkExecOptions {
   timeout?: number;  // ms, default 30000
 }
 
 function larkExec(args: string[], opts: LarkExecOptions = {}): string {
-  const result = execFileSync('lark-cli', args, {
+  const result = execFileSync(LARK_CLI, args, {
     encoding: 'utf-8',
     timeout: opts.timeout ?? 30000,
     maxBuffer: 10 * 1024 * 1024,
@@ -89,7 +91,7 @@ export async function searchDocs(query: string, maxPages = 10): Promise<SearchRe
   let pageToken: string | undefined;
 
   for (let page = 0; page < maxPages; page++) {
-    const args = ['docs', '+search', '--query', JSON.stringify(query), '--page-size', '20'];
+    const args = ['docs', '+search', '--query', query, '--page-size', '20'];
     if (pageToken) args.push('--page-token', pageToken);
 
     const raw = larkJSON<RawSearchResponse>(args);
@@ -158,7 +160,7 @@ function larkAPI<T = unknown>(method: string, path: string, params?: Record<stri
   const args = ['api', method, path, '--format', 'json', '--page-all'];
   if (params) args.push('--params', JSON.stringify(params));
   // Use execFileSync to avoid shell escaping issues with JSON params
-  const raw = execFileSync('lark-cli', args, {
+  const raw = execFileSync(LARK_CLI, args, {
     encoding: 'utf-8',
     timeout: 60000,
     maxBuffer: 10 * 1024 * 1024,
@@ -366,7 +368,7 @@ export function getMeetingNoteTokens(meetingId: string): { noteToken?: string; v
   try {
     const args = ['vc', '+notes', '--meeting-ids', meetingId, '--format', 'json'];
     // Suppress stderr to avoid lark-cli diagnostic noise for meetings without notes
-    const raw = execFileSync('lark-cli', args, {
+    const raw = execFileSync(LARK_CLI, args, {
       encoding: 'utf-8',
       timeout: 30000,
       maxBuffer: 10 * 1024 * 1024,
@@ -446,7 +448,7 @@ export async function createDoc(title: string, markdown: string, wikiSpace?: str
   const args = ['docs', '+create', '--title', title, '--markdown', markdown];
   if (wikiSpace) args.push('--wiki-space', wikiSpace);
 
-  const raw = execFileSync('lark-cli', args, {
+  const raw = execFileSync(LARK_CLI, args, {
     encoding: 'utf-8',
     timeout: 120000,
     maxBuffer: 10 * 1024 * 1024,
@@ -465,7 +467,7 @@ export async function updateDoc(docId: string, markdown: string, newTitle?: stri
   const args = ['docs', '+update', '--doc', docId, '--mode', 'overwrite', '--markdown', markdown];
   if (newTitle) args.push('--new-title', newTitle);
 
-  execFileSync('lark-cli', args, {
+  execFileSync(LARK_CLI, args, {
     encoding: 'utf-8',
     timeout: 120000,
     maxBuffer: 10 * 1024 * 1024,

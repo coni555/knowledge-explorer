@@ -40,7 +40,7 @@ Set in `.env` (auto-loaded) or shell:
 
 | Scope | Purpose |
 |-------|---------|
-| `search:docs_wiki:readonly` | Search documents |
+| `search:docs:read` | Search documents |
 | `wiki:node:read` | Read wiki nodes |
 | `docx:document:readonly` | Read document content |
 | `docx:document` | Create report document |

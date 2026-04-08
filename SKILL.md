@@ -148,7 +148,7 @@ For full details: `references/cli-reference.md`.
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `未找到任何文档` | lark-cli not logged in or missing scope | `lark-cli auth login --scope search:docs_wiki:readonly,wiki:node:read,docx:document:readonly,docx:document,drive:drive:readonly` |
+| `未找到任何文档` | lark-cli not logged in or missing scope | `lark-cli auth login --scope search:docs:read,wiki:node:read,docx:document:readonly,docx:document,drive:drive:readonly` |
 | `AI not configured` | Missing API key (Path B only) | Check `.env` or switch to Path A |
 | `429 Too Many Requests` | API rate limit | Wait a few minutes, or switch API key |
 | Clusters too few (≤2) | Too few docs or topics too similar | Broaden search (remove `--query`) |
