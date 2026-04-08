@@ -74,7 +74,7 @@ async function supplementWithSearch(
     for (const item of searchResults) {
       if (seenIds.has(item.doc_id)) continue;
 
-      const supportedTypes = ['DOC', 'DOCX'];
+      const supportedTypes = ['DOC', 'DOCX', 'WIKI'];
       if (!supportedTypes.includes(item.type)) continue;
 
       if (ownerOpt && !filterFn(item.owner_name, item.owner_id)) continue;
@@ -92,20 +92,48 @@ async function supplementWithSearch(
       }
 
       try {
-        const content = await fetchDocContent(item.doc_id);
+        let markdown = '';
+        let title = item.title;
+        let docId = item.doc_id;
+
+        if (item.type === 'WIKI') {
+          try {
+            const wikiNode = await resolveWikiNode(item.doc_id);
+            if (wikiNode.obj_type === 'docx' || wikiNode.obj_type === 'doc') {
+              docId = wikiNode.obj_token;
+              // Skip if the resolved token was already seen
+              if (seenIds.has(docId)) continue;
+              seenIds.add(docId);
+              const content = await fetchDocContent(docId);
+              markdown = content.markdown;
+              title = content.title || title;
+            } else {
+              continue; // non-doc wiki node, skip
+            }
+          } catch {
+            const content = await fetchDocContent(item.doc_id);
+            markdown = content.markdown;
+            title = content.title || title;
+          }
+        } else {
+          const content = await fetchDocContent(item.doc_id);
+          markdown = content.markdown;
+          title = content.title || title;
+        }
+
         allNodes.push({
-          id: item.doc_id,
-          type: 'doc',
-          title: content.title || item.title,
+          id: docId,
+          type: item.type === 'WIKI' ? 'wiki' : 'doc',
+          title,
           space: '',
           owner: item.owner_name,
           url: item.url,
           updated_at: item.edit_time_iso ?? new Date().toISOString(),
           summary: '',
           keywords: [],
-          word_count: content.markdown.length,
+          word_count: markdown.length,
           fetched_at: new Date().toISOString(),
-          content: content.markdown,
+          content: markdown,
         });
         supplementCount++;
         fetchCount++;
