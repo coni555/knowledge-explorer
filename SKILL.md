@@ -1,5 +1,5 @@
 ---
-name: knowledge-explorer
+name: lark-knowledge-explorer
 description: >-
   Feishu/Lark knowledge base analyzer: scans wiki spaces and Drive folders,
   discovers hidden document relationships via semantic clustering, and generates
