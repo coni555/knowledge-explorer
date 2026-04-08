@@ -2,7 +2,7 @@
 
 [English](README.md) | [中文](README.zh.md)
 
-# Knowledge Explorer
+# lark-Knowledge Explorer skill
 
 ### 飞书知识探索器
 
